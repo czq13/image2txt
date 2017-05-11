@@ -1,3 +1,5 @@
+# coding=utf-8
+import sys
 
 import h5py
 import numpy as np
@@ -7,21 +9,22 @@ from keras.layers import LSTM, Embedding, TimeDistributed, Dense, RepeatVector, 
 from keras.preprocessing import image, sequence
 
 import cPickle as pickle
+import thulac
 
 EMBEDDING_DIM = 128
 
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 class CaptionGenerator():
 
     def __init__(self):
-        self.max_cap_len = None
+        self.max_cap_len = 32
         self.vocab_size = None
         self.index_word = None
         self.word_index = None
-        self.total_samples = None
-        #self.encoded_images = pickle.load( open( "encoded_images.p", "rb" ) )
         self.images_data_init()
-        #self.variable_initializer()
+        self.captions_data_init()
 
     def images_data_init(self):
         data = h5py.File('images/image_vgg19_fc2_feature_677004464.h5')
@@ -29,49 +32,18 @@ class CaptionGenerator():
         self.images_validation_set = data['validation_set'].value
 
     def captions_data_init(self):
-        #TODO:set
-        #        max_cap_len
-        #        index_word
-        #        word_index
-        #        total_samples
-        #        or just find a way to make partial and next_words proper
-        pass
-    def variable_initializer(self):
-        df = pd.read_csv('../Flickr8k_text/flickr_8k_train_dataset.txt', delimiter='\t')
-        nb_samples = df.shape[0]
-        iter = df.iterrows()
-        caps = []
-        for i in range(nb_samples):
-            x = iter.next()
-            caps.append(x[1][1])
-
-        self.total_samples=0
-        for text in caps:
-            self.total_samples+=len(text.split())-1
-        print "Total samples : "+str(self.total_samples)
-        
-        words = [txt.split() for txt in caps]
-        unique = []
-        for word in words:
-            unique.extend(word)
-
-        unique = list(set(unique))
-        self.vocab_size = len(unique)
-        self.word_index = {}
-        self.index_word = {}
-        for i, word in enumerate(unique):
-            self.word_index[word]=i
-            self.index_word[i]=word
-
-        max_len = 0
-        for caption in caps:
-            if(len(caption.split()) > max_len):
-                max_len = len(caption.split())
-        self.max_cap_len = max_len
+        with open('captions/word_to_id.txt') as f:
+            text = f.read().encode('utf-8').split("\n")
+            self.vocab_size = len(text)
+            word_to_id = [(line.split(" "))for line in text]
+            self.word_index = {}
+            self.index_word = {}
+            for (word,i) in word_to_id:
+                self.word_index[word]=i
+                self.index_word[i]=word
         print "Vocabulary size: "+str(self.vocab_size)
         print "Maximum caption length: "+str(self.max_cap_len)
         print "Variables initialization done!"
-
 
     def data_generator(self, batch_size = 32):
         partial_caps = []
@@ -79,33 +51,35 @@ class CaptionGenerator():
         images = []
         print "Generating data..."
         gen_count = 0
-        df = pd.read_csv('../Flickr8k_text/flickr_8k_train_dataset.txt', delimiter='\t')
-        nb_samples = df.shape[0]
-        iter = df.iterrows()
-        caps = []
-        imgs = []
-        for i in range(nb_samples):
-            x = iter.next()
-            caps.append(x[1][1])
-            imgs.append(x[1][0])
+        image_caption_pairs=[]
+        with open('captions/train.txt', 'r') as f:
+            text = f.read().decode("utf-8").split("\r\n")
+            for line in text:
+              if line.isdigit():
+                image_id = int(line)
+              else:
+                image_caption_pairs.append((image_id, line))
+        
 
-
+        thu1 = thulac.thulac(seg_only=True)
+        
         total_count = 0
         while 1:
             image_counter = -1
-            for text in caps:
+            for image_id, text in image_caption_pairs:
                 image_counter+=1
                 #current_image = self.encoded_images[imgs[image_counter]]
                 current_image = self.images_train_set[image_counter]
-                for i in range(len(text.split())-1):
+                words = _read_words(sentence, thu1)
+                for i in range(len(words)-1):
                     total_count+=1
                     #####################################
                     #TODO: set partial and next_words
-                    partial = [self.word_index[txt] for txt in text.split()[:i+1]]
+                    partial = [self.word_index[txt] for txt in words[:i+1]]
                     partial_caps.append(partial)
-                    next = np.zeros(self.vocab_size)
-                    next[self.word_index[text.split()[i+1]]] = 1
-                    next_words.append(next)
+                    next_w = np.zeros(self.vocab_size)
+                    next_w[self.word_index[words[i+1]]] = 1
+                    next_words.append(next_w)
                     #####################################
                     images.append(current_image)
 
@@ -158,3 +132,7 @@ class CaptionGenerator():
 
     def get_word(self,index):
         return self.index_word[index]
+
+if __name__ == '__main__':
+    cg = CaptionGenerator()
+    model = cg.create_model()
