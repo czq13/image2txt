@@ -1,3 +1,4 @@
+# coding=utf-8
 import cPickle as pickle
 import caption_generator
 import numpy as np
