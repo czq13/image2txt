@@ -11,6 +11,8 @@ from keras.preprocessing import image, sequence
 import cPickle as pickle
 import thulac
 
+from caption_reader import _read_words
+
 EMBEDDING_DIM = 128
 
 reload(sys)
@@ -65,11 +67,8 @@ class CaptionGenerator():
         
         total_count = 0
         while 1:
-            image_counter = -1
             for image_id, text in image_caption_pairs:
-                image_counter+=1
-                #current_image = self.encoded_images[imgs[image_counter]]
-                current_image = self.images_train_set[image_counter]
+                current_image = self.images_train_set[int(image_id)-1]
                 words = _read_words(sentence, thu1)
                 for i in range(len(words)-1):
                     total_count+=1
