@@ -9,7 +9,7 @@ import sys
 
 import tensorflow as tf
 import thulac
-import jieba
+#import jieba
 
 reload(sys)
 sys.setdefaultencoding('utf8')
