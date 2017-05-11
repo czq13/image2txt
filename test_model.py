@@ -1,6 +1,7 @@
 # coding=utf-8
 import cPickle as pickle
 import caption_generator
+import h5py
 import numpy as np
 from keras.preprocessing import sequence
 import nltk
@@ -11,7 +12,7 @@ def process_caption(caption):
 	caption_split = caption.split()
 	processed_caption = caption_split[1:]
 	try:
-		end_index = processed_caption.index('<end>')
+		end_index = processed_caption.index('</S>')
 		processed_caption = processed_caption[:end_index]
 	except:
 		pass
@@ -31,7 +32,7 @@ def get_all_captions(captions):
     return final_captions
 
 def generate_captions(model, image, beam_size):
-	start = [cg.word_index['<start>']]
+	start = [cg.word_index['<S>']]
 	captions = [[start,0.0]]
 	while(len(captions[0][0]) < cg.max_cap_len):
 		temp_captions = []
@@ -63,54 +64,51 @@ def test_model(weight, img_name, beam_size = 3):
 def bleu_score(hypotheses, references):
 	return nltk.translate.bleu_score.corpus_bleu(references, hypotheses)
 
-def test_model_on_images(weight, img_dir, beam_size = 3):
-	imgs = []
+def test_model_on_images(weight, beam_size = 3):
 	captions = {}
-	with open(img_dir, 'rb') as f_images:
-		imgs = f_images.read().strip().split('\n')
-	encoded_images = pickle.load( open( "encoded_images.p", "rb" ) )
+
 	model = cg.create_model(ret_model = True)
 	model.load_weights(weight)
+	images_validation_set = cg.images_validation_set
 
 	f_pred_caption = open('predicted_captions.txt', 'wb')
 
-	for count, img_name in enumerate(imgs):
-		print "Predicting for image: "+str(count)
-		image = encoded_images[img_name]
+	for i,image in zip(range(len(images_validation_set)), images_validation_set):
+		print "Predicting for image: "+str(8001+i)
 		image_captions = generate_captions(model, image, beam_size)
 		best_caption = process_caption(get_best_caption(image_captions))
-		captions[img_name] = best_caption
-		print img_name+" : "+str(best_caption)
-		f_pred_caption.write(img_name+"\t"+str(best_caption))
+		# captions[i] = best_caption
+		print str(i)+" : "+str(best_caption)
+		f_pred_caption.write(str(best_caption)+"\n")
 		f_pred_caption.flush()
 	f_pred_caption.close()
-
-	f_captions = open('Flickr8k_text/Flickr8k.token.txt', 'rb')
-	captions_text = f_captions.read().strip().split('\n')
-	image_captions_pair = {}
-	for row in captions_text:
-		row = row.split("\t")
-		row[0] = row[0][:len(row[0])-2]
-		try:
-			image_captions_pair[row[0]].append(row[1])
-		except:
-			image_captions_pair[row[0]] = [row[1]]
-	f_captions.close()
+    #
+	# f_captions = open('Flickr8k_text/Flickr8k.token.txt', 'rb')
+	# captions_text = f_captions.read().strip().split('\n')
+	# image_captions_pair = {}
+	# for row in captions_text:
+	# 	row = row.split("\t")
+	# 	row[0] = row[0][:len(row[0])-2]
+	# 	try:
+	# 		image_captions_pair[row[0]].append(row[1])
+	# 	except:
+	# 		image_captions_pair[row[0]] = [row[1]]
+	# f_captions.close()
 	
-	hypotheses=[]
-	references = []
-	for img_name in imgs:
-		hypothesis = captions[img_name]
-		reference = image_captions_pair[img_name]
-		hypotheses.append(hypothesis)
-		references.append(reference)
+	# hypotheses=[]
+	# references = []
+	# for img_name in imgs:
+	# 	hypothesis = captions[img_name]
+	# 	reference = image_captions_pair[img_name]
+	# 	hypotheses.append(hypothesis)
+	# 	references.append(reference)
 
-	return bleu_score(hypotheses, references)
+	# return bleu_score(hypotheses, references)
 
 if __name__ == '__main__':
-	weight = 'weights-improvement-48.hdf5'
-	test_image = '3155451946_c0862c70cb.jpg'
-	test_img_dir = 'Flickr8k_text/Flickr_8k.testImages.txt'
+	weight = 'weights-improvement-22.hdf5'
+	# test_image = '3155451946_c0862c70cb.jpg'
+	# test_img_dir = 'Flickr8k_text/Flickr_8k.testImages.txt'
 	#TODO:validation and test data should be read from image/*.h5
 	#print test_model(weight, test_image)
-	print test_model_on_images(weight, test_img_dir, beam_size=3)
+	print test_model_on_images(weight, beam_size=3)
