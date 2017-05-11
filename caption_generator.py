@@ -25,6 +25,7 @@ class CaptionGenerator():
         self.vocab_size = None
         self.index_word = None
         self.word_index = None
+        self.total_samples = None
         self.images_data_init()
         self.captions_data_init()
 
@@ -41,8 +42,15 @@ class CaptionGenerator():
             self.word_index = {}
             self.index_word = {}
             for (word,i) in word_to_id:
-                self.word_index[word]=i
-                self.index_word[i]=word
+                self.word_index[word]=int(i)
+                self.index_word[int(i)]=word
+        temp = 0
+        with open('captions/train.txt', 'r') as f:
+            text = f.read().decode("utf-8").split("\r\n")
+            for line in text:
+                if not line.isdigit():
+                    temp+=1
+        self.total_samples = temp
         print "Vocabulary size: "+str(self.vocab_size)
         print "Maximum caption length: "+str(self.max_cap_len)
         print "Variables initialization done!"
@@ -69,7 +77,7 @@ class CaptionGenerator():
         while 1:
             for image_id, text in image_caption_pairs:
                 current_image = self.images_train_set[int(image_id)-1]
-                words = _read_words(sentence, thu1)
+                words = _read_words(text, thu1)
                 for i in range(len(words)-1):
                     total_count+=1
                     #####################################
