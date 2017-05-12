@@ -78,6 +78,7 @@ class CaptionGenerator():
             for image_id, text in image_caption_pairs:
                 current_image = self.images_train_set[int(image_id)-1]
                 words = _read_words(text, thu1)
+                words = [w if w in self.word_index else "<UKW>" for w in words]
                 for i in range(len(words)-1):
                     total_count+=1
                     #####################################
