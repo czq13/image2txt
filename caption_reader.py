@@ -66,6 +66,9 @@ def _build_vocab(filename):
     count_pairs = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
     # print(count_pairs)
 
+    # Remove Low-frequency word
+    count_pairs = [(a,b) for (a,b) in count_pairs if b > 1]
+
     words, _ = list(zip(*count_pairs))
     word_to_id = dict(zip(words, range(1,1+len(words))))
 
