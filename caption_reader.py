@@ -17,8 +17,8 @@ sys.setdefaultencoding('utf8')
 
 tf.flags.DEFINE_string("data_path", "./captions",
                        "Caption files directory")
-tf.flags.DEFINE_string("parse_method", "thulac",
-                       "Parsing method (thulac or jieba). jieba may have some encoding problem.")
+tf.flags.DEFINE_string("parse_method", "default",
+                       "Parsing method (default, thulac or jieba). default is letter by letter. jieba may have some encoding problem.")
 tf.flags.DEFINE_string("word_id_output_file", "./captions/word_to_id.txt",
                        "Output vocabulary file of word to id pairs.")
 tf.flags.DEFINE_string("word_count_output_file", "./captions/word_count.txt",
@@ -27,7 +27,7 @@ tf.flags.DEFINE_string("word_count_output_file", "./captions/word_count.txt",
 FLAGS = tf.flags.FLAGS
 
 # parsing
-def _read_words(sentence, thu):
+def _read_words_with_thulac(sentence, thu):
   tokenized_caption = ["<S>"]
   temp = thu.cut(sentence, text=True).split(" ")
   tokenized_caption.extend(temp)
@@ -42,7 +42,15 @@ def _read_words_with_jieba(sentence):
   tokenized_caption.extend(temp)
   tokenized_caption.append("</S>")
   return tokenized_caption
-  
+
+
+def _read_words(sentence):
+  tokenized_caption = ["<S>"]
+  temp=[sentence[i] for i in range(len(sentence))]
+  tokenized_caption.extend(temp)
+  tokenized_caption.append("</S>")
+  return tokenized_caption
+
 
 def _build_vocab(filename):
   with tf.gfile.GFile(filename, "r") as f:
@@ -54,12 +62,15 @@ def _build_vocab(filename):
         image_id = int(line)
       else:
         image_caption_pairs.append((image_id, line))
-    
+
+
     if FLAGS.parse_method == "thulac":
       thu1 = thulac.thulac(seg_only=True)
       data = [word for (_, sentence) in image_caption_pairs for word in _read_words(sentence, thu1)]
     elif FLAGS.parse_method == "jieba":
-      data = [word for (_, sentence) in image_caption_pairs for word in _read_words_with_jieba(sentence)]     
+      data = [word for (_, sentence) in image_caption_pairs for word in _read_words_with_jieba(sentence)]  
+    else:
+      data = [word for (_, sentence) in image_caption_pairs for word in _read_words(sentence)]
 
     counter = collections.Counter(data)
     # print(counter)
@@ -74,7 +85,6 @@ def _build_vocab(filename):
 
     # add zero, begin, end, unknown words
     word_to_id['<UKW>'] = len(word_to_id)+1
-    word_to_id['<ZERO>'] = 0 
 
     # Write out the word id file.
     with tf.gfile.FastGFile(FLAGS.word_id_output_file, "w") as f:
